@@ -1,0 +1,8 @@
+../finalexam/bam/BP1_sorted.bam
+../finalexam/bam/BP2_sorted.bam
+../finalexam/bam/BP3_sorted.bam
+../finalexam/bam/BP4_sorted.bam
+../finalexam/bam/BP5_sorted.bam
+../finalexam/bam/BP6_sorted.bam
+../finalexam/bam/BP7_sorted.bam
+../finalexam/bam/BP8_sorted.bam

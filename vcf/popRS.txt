@@ -1,0 +1,8 @@
+../finalexam/bam/RS1_sorted.bam
+../finalexam/bam/RS2_sorted.bam
+../finalexam/bam/RS3_sorted.bam
+../finalexam/bam/RS4_sorted.bam
+../finalexam/bam/RS5_sorted.bam
+../finalexam/bam/RS6_sorted.bam
+../finalexam/bam/RS7_sorted.bam
+../finalexam/bam/RS8_sorted.bam
