@@ -5,25 +5,25 @@ date: "2025-11-17"
 output: html_document
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
+## Examen de bioinformatique :
 
-## R Markdown
+Le but de ce travail est d'étudier la structure de deux populations d'épinoche à 3 épines (Gasterosteus aculeatus) à partir de données de RADseq.
 
-Les données issues Hohenlohe 2010 ont été téléchargées depuis moodle.
+Les données issues de Hohenlohe et al. (2010) ont ainsi été téléchargées depuis moodle.
 
-## Partie 1 : Bases Linux 
+Ce travail présente le code de préparation des données pour leur analyse ultérieure.
+
+## Partie 1 : Bases Linux
 
 ```{bash}
-# Création du répertoire et récupération des fichiers : 
+# Création du répertoire et récupération des fichiers téléchargés : 
 cd Bureau/
 mkdir finalexam 
 unzip transfer_11203667_files_1493d387.zip
 
-# Nombre de lignes dans le fichier SRR : 
+# Nombre de lignes dans le fichier SRR (contenant les séquences en fastq) : 
 wc -l SRR034310_10pc.fastq
-# Il y a 3564012 lignes.
+# Il y a 3 564 012 lignes.
 
 # Longueur des lectures : 
 cat SRR034310_10pc.fastq | head
@@ -36,16 +36,18 @@ wc -l Details_Barcode_Population_SRR034310.txt
 
 ## Partie 2 : Contrôle qualité
 
-Pour faire le contrôle de qualité avec le logiciel FastQC, on utilise deux scripts bash. D'abord, le script du fichier run_fastqc_exam :
+Pour faire le contrôle de qualité avec le logiciel FastQC, on utilise deux scripts bash.
+
+1)  D'abord, le script du fichier run_fastqc_exam :
 
 ```{bash}
-## Script pour exécuter le fastqc
-##run_fastqc SRR034310
+## Script permettant d'exécuter le fastqc
+## run_fastqc SRR034310
 
-# 1. Run fastqc
+# 1. Ouverture du logiciel fastqc : 
 ~/Bureau/bioinfo/fastqc_v0.12.1/FastQC/fastqc $1
 
-# 2. Prep folder
+# 2. Préparation du dossier qui va accueillir les résultats du contrôle qualité : 
 name=$(echo $1 | cut -d '.' -f 1)
 suff="_fastqc"
 fold="$name$suff"
@@ -55,13 +57,13 @@ unzip -o $fold
 echo "...done."
 echo ""
 
-# Parse result
+# Affichage des résultats au format résumé, à l'aide du script écrit ci-après : 
 echo "Parsing..."
 ~/Bureau/finalexam/parsing_fastqc.sh $fold/exam_fastqc_data.txt > Results_exam_fastq_parsing.txt
 echo "...done."
 ```
 
-Puis, le script du fichier 'parsing_fastqc.sh (qui est utilisé dans l'exécution du premier) :
+Puis, le script du fichier 'parsing_fastqc.sh' (qui est utilisé dans l'exécution du premier) :
 
 ```{bash}
 #!/bin/bash
@@ -91,7 +93,7 @@ qc11=$(grep "Adapter Content" $1 | cut -f 2 | cut -b 1)
 
 Une fois les résultats obtenus, on lit le fichier html contenant l'analyse des séquences.
 
-Voici les graphiques obtenus et stockés dans le dossier qc.
+2)  Voici les graphiques obtenus et stockés dans le dossier /qc.
 
 ```{r, echo = F}
 knitr::include_graphics("~/Bureau/finalexam/qc/Images/per_base_quality.png")
@@ -109,23 +111,29 @@ Toutes les séquences font 36 paires de bases, c'est parfait.
 knitr::include_graphics("~/Bureau/finalexam/qc/Images/adapter_content.png")
 ```
 
-Il n'y a pas d'adaptateur retrouvé par le contrôle qualité, les séquences ont bien été nettoyées.
+Il n'y a pas d'adaptateur retrouvé par le contrôle qualité, il n'y a donc pas de contamination du séquençage par ceux-ci. En d'autres termes, aucun adaptateur ou barcode n'était libre sans insert lors du séquençage.
 
 ```{r, echo = F}
-knitr::include_graphics("~/Bureau/finalexam/qc/Images/overrepresented_sequences.png")
+knitr::include_graphics("~/Bureau/finalexam/qc/Images/overrepresented_seq.png")
 ```
 
-Ces séquences surreprésentées sont principalement composées de N, c'est-à-dire des bases dégénérées qui n'ont pas été reconnues lors du séquençage. L'enzyme de restriction utilisée pour ce séquençage en RADseq est Sbf1. Son site palindromique est TGCAGG. Les 4 nucléotides précédent le site de restriction palindromique semblent être les adaptateurs, malgré que le logiciel fastqc ne les ait pas détéctés.
+Ces séquences surreprésentées sont principalement composées de N, c'est-à-dire des bases dégénérées qui n'ont pas été reconnues lors du séquençage.
 
-# Partie 3 : Démultipllexation avec les barcodes :
+3)  L'enzyme de restriction utilisée pour ce séquençage en RADseq est Sbf1. Son site palindromique est TGCAGG.
 
-Pour créer nos nouveaux fichiers fastq, nous avons utilisé grep pour récupérer les lignes correspondant aux barcodes avec les arguments -A2 pour récupérer les deux lignes suivantes et -B1 pour la ligne précédente. Nous avons redirigé le résultat de cette fonction vers un nouveau fichier en .fastq nommé pour chaque site correspondant. Voici un exemple ci-dessous pour le site 8 de RabbitSlough, dont le barcode est GGCC :
+4)  Les 4 nucléotides précédent le site de restriction palindromique sont les adaptateurs.
+
+A partir de cette étape, nous avons effectué le reste des analyses sur le cluster.
+
+# Partie 3 : Démultiplage avec les barcodes :
+
+Pour créer nos nouveaux fichiers fastq et séparer nos lectures par sites et individus, nous avons utilisé 'grep' pour récupérer les lignes correspondant aux barcodes avec les arguments -A2 pour récupérer les deux lignes suivantes et -B1 pour la ligne précédente. Nous avons redirigé le résultat de cette fonction vers un nouveau fichier en .fastq nommé comme chaque site correspondant. Voici un exemple ci-dessous pour le site 8 de RabbitSlough, dont le barcode associé est GGCC :
 
 ```{bash}
 grep -A2 -B1 "^GGCC" SRR034310_10pc.fastq  > RabbitSlough8.fastq
 ```
 
-Les fichiers fastq obtenus ont été nettoyés à l'aide de la fonction trimfq du logiciel seqtk. Les nouveaux fichiers ont été envoyés dans un nouveau dossier finalexam (sur le cluster). Pour cela , la commande suivante a été utilisée pour chacun des 16 sites dont on avait récupéré les séquences :
+Les fichiers fastq obtenus ont été nettoyés à l'aide de la fonction 'trimfq' du logiciel seqtk. Les nouveaux fichiers ont été envoyés dans un nouveau dossier /finalexam (sur le cluster). Pour cela , la commande suivante a été utilisée pour chacun des 16 sites dont on avait récupéré les séquences :
 
 ```{bash}
 seqtk  trimfq -b4 RabbitSlough8.fastq > finalexam/RS8_trim.fastq
@@ -133,11 +141,12 @@ seqtk  trimfq -b4 RabbitSlough8.fastq > finalexam/RS8_trim.fastq
 
 Les barcodes faisant 4 bases de long, les 4 premiers nucléotides de chaque séquence ont été retirés, comme l'indique l'argument -b4.
 
-On compte ensuite le nombre de lectures par échantillon grâce à la commande, ici dans les séquences de RabbitSlough8 :
+On compte ensuite le nombre de lectures par échantillon grâce à la commande suivante, ici pour les séquences de RabbitSlough8 :
 
 ```{bash}
 grep "^@SRR" RS8_trim.fastq | wc -l
 ```
+
 On obtient ces valeurs pour nos 16 sites.
 
 Tableau 1 : Nombre de lectures associées à chaque site échantillonné.
@@ -153,79 +162,101 @@ Tableau 1 : Nombre de lectures associées à chaque site échantillonné.
 | BearPaw7 | 44927            | RabbitSlough7 | 98983            |
 | BearPaw8 | 68112            | RabbitSlough8 | 55038            |
 
-Qu'est ce que le barcoding ? Le barcoding est le fait d'ajouter une séquence connue différente au début de chaque lecture pour chaque site d'échantillonnage. Cela permet de différencier les lectures entre sites grâce à ces 'étiquettes' ajoutées. Cela peut également être utilisé pour différencier des individus.
+Qu'est ce que le barcoding ? Le barcoding est le fait d'ajouter une séquence connue différente au début de chaque lecture pour chaque site d'échantillonnage. Cela permet de différencier les lectures entre sites et individus grâce à ces 'étiquettes' ajoutées.
 
 # Partie 4 : Cartographie sur un génome de référence
 
 ```{bash}
-# On commence par indexer le génome de référence : 
+# 1) On commence par indexer le génome de référence : 
 bwa-mem2 index Reference_genome_chrI.fasta 
 
-# On cartographie chaque lecture sur notre génome de référence à l'aide de cette commande, ici pour RabbitSlough8 : 
+# 2) On cartographie les lectures de chaque site et individu sur notre génome de référence à l'aide de cette commande, ici pour RabbitSlough8 : 
 bwa-mem2 mem Reference_genome_chrI.fasta finalexam/RS8_trim.fastq > finalexam/sam/RS8.sam
 
-# On convertit ensuite nos fichiers sam en bam : 
+# 3) On convertit ensuite nos fichiers sam en bam : 
 samtools view -bS RS8.sam > RS8.bam
 samtools sort RS8.bam -o RS8_sorted.bam
 samtools index RS8_sorted.bam
 
-# Récupération des données de mapping : 
+# 4) On calcule les statistiques de mapping pour chaque individu et site : 
 samtools flagstat RS8_sorted.bam
 ```
 
-On a ensuite calculé les statistiques de mapping avec la fonction : 
-```{bash}
-samtools flagstat RS8_sorted.bam
-```
+Nous avons résumé les statistiques de mapping de chaque individu dans ce tableau. On y a listé pour chacun, le nombre de lectures obtenues, le pourcentage de lectures de chaque individu qui se sont cartographiées sur le génome et le nombre de zones dupliquées chez certains individus.
 
 ```{r, echo = F}
 knitr::include_graphics("~/Bureau/finalexam/tab_mapping.png")
 ```
 
-Le pourcentage de mapping nous informe qu'en moyenne, seulement 7,5% des lectures arrivent à se cartographier sur le génome de référence. Cela peut s'expliquer par le fait qu'ici, nous n'avons qu'un chromosome (le chromosome 1) ici en référence.
-Les organismes marins présentent souvent des régions répétées qui peuvent nuire à la qualité du mapping des lectures. 
+Le pourcentage de mapping nous informe qu'en moyenne, seulement 7,5% des lectures arrivent à se cartographier sur le génome de référence. Cela peut s'expliquer par le fait qu'ici, nous n'avons qu'un chromosome (le chromosome 1) en référence.
+
+Les organismes marins présentent souvent des régions répétées qui peuvent nuire à la qualité du mapping des lectures.
 
 # Partie 5 : Retrouver les SNP
 
-On commence par indexer notre génome de référence :
+1)  On commence par indexer notre génome de référence :
 
 ```{bash}
 samtools faidx Reference_genome_chrI.fasta
 ```
 
-Et on tente ensuite de retrouver les SNPs dans chacun de nos fichiers BAM :
+2 et 3) Et on tente ensuite de retrouver les SNPs dans chacun de nos fichiers BAM :
 
 ```{bash}
+# Création d'un nouveau dossier : 
+mkdir vcf/
+cd vfc 
+
+# Détection de variants chez l'ensemble de nos individus : 
 bcftools mpileup -Ou -f ../Reference_genome_chrI.fasta ../finalexam/bam/BP1_sorted.bam ../finalexam/bam/BP2_sorted.bam ../finalexam/bam/BP3_sorted.bam ../finalexam/bam/BP4_sorted.bam ../finalexam/bam/BP5_sorted.bam ../finalexam/bam/BP6_sorted.bam ../finalexam/bam/BP7_sorted.bam ../finalexam/bam/BP8_sorted.bam ../finalexam/bam/RS1_sorted.bam ../finalexam/bam/RS2_sorted.bam ../finalexam/bam/RS3_sorted.bam ../finalexam/bam/RS4_sorted.bam ../finalexam/bam/RS5_sorted.bam ../finalexam/bam/RS6_sorted.bam ../finalexam/bam/RS7_sorted.bam ../finalexam/bam/RS8_sorted.bam | bcftools call -mv -Ov -o raw_variants.vcf
 
-# Et on ouvre le fichier créé pour savoir combien de SNPs il y a : 
+# Et on ouvre le fichier créé pour savoir combien de SNPs détectés il y a au total : 
 vcftools --vcf raw_variants.vcf --freq
 ```
-Nous avons 127 positions de variation.
 
-On filtre ensuite les SNP en ne gardant que ceux qui sont les plus intéressants : 
+4)  Nous avons 127 positions de variation.
+
+5)  On filtre ensuite les SNPs en ne gardant que ceux qui sont les plus intéressants :
+
 ```{bash}
 vcftools --vcf raw_variants.vcf --minDP 5 --max-missing 1 --min-alleles 2 --max-alleles 2 --recode --out filtered
 ```
 
-Cette fonction nous permet de ne garder une profondeur minimale >= 5 (minDP5), de filtrer les positions où 100% des génotypes sont disponibles, de ne garder que les sites polymorphes (au moins 2 allèles détectés) et de ne garder que les variantes bialléliques (soit les SNPs). Ainsi, seulement 4 SNPs sur 127 sites de variations ont été conservés après la filtration.
+Cette fonction nous permet de ne garder que les positions ayant une profondeur minimale de couverture \>= 5 (minDP5), de ne garder que les positions où 100% des génotypes (par rapport à la réf) sont disponibles, et de ne garder que les variantes bialléliques (soit les SNPs). Ainsi, seulement 4 SNPs sur 127 sites de variations ont été conservés après la filtration.
 
-On visualise ensuite les résultats de FST à chaque site :
+5)  Calcul des fréquences alléliques et des FST par position chromosomique :
+
+```{bash}
+# Les fréquences alléliques : 
+vcftools --vcf raw_variants --freq --out allele_freqs
+
+# Et le FST par site : 
+    # On crée au préalable deux documents, chacun contenant les noms et chemins des fichiers BAM correspondant à nos individus de chaque population. 
+    touch popBP.txt 
+    touch popRS.txt
+    
+# Puis on calcule le FST par site avec cette fonction, en spécifiant nos deux populations : 
+vcftools --vcf raw_variants --weir-fst-pop popBP.txt --weir-fst-pop popRS.txt
+```
+
+Les fichiers générés sont directement enregistrés dans le dossier vcf/ où on se trouve.
+
+6)  On visualise ensuite les résultats de FST à chaque site avec R :
+
 ```{r}
 library(ggplot2)
 fst <- read.table("~/Bureau/finalexam/vcf/out.weir.fst", header = T)
 fst|>
   ggplot2::ggplot(aes(x = POS, y = WEIR_AND_COCKERHAM_FST)) + 
-  geom_point()
+  geom_point() +
+  labs(x = "Position sur le chromosome", 
+       y = "FST")
 
 ```
 
 De même, pour les résultats des fréquences alléliques :
 
 ```{r}
-
-frq <- fread("~/Bureau/finalexam/vcf/allele_freqs.frq")
-
 raw <- readLines("~/Bureau/finalexam/vcf/allele_freqs.frq")
 library(tidyverse)
 
@@ -254,21 +285,24 @@ frq_long |>
   group_by(CHROM, POS) |> 
   summarise(min = min(FREQ, na.rm = T))|>
   ggplot(aes(x = min)) +
-  geom_histogram(color = "black", fill = "steelblue")
+  geom_histogram(color = "black", fill = "steelblue") + 
+  labs(x = "Fréquence de l'allèle minoritaire à chaque position",
+       y = "Fréquence des fréquences")
 
 ```
 
 # Partie 6 : Interprétation
 
-1.  Couverture et profondeur de couverture La couverture est le pourcentage du génome qui est représenté dans nos lectures alors que la profondeur de couverture est le nombre de fois qu'un locus a été lu.
+1.  La couverture est le pourcentage du génome qui est représenté dans nos lectures alors que la profondeur de couverture est le nombre de lectures disponibles pour un locus.
 
-2.  RADseq Les lectures obtenues avec un séquençage RAD sont très courtes et obtenues à partir de sites de restriction. Cela permet de cibler les zones du génome analysées. Il peut y avoir beaucoup de loci avec des données manquantes en lien avec un polymorphisme au niveau des sites de restriction, la profondeur de couverture peut être assez variable entre les individus, il peut aussi y avoir la perte d'une version d'un allèle lors du tri des individus (surtout si le pourcentage de couverture est faible, les individus vont peut-être être retirés pour l'analyse lors du nettoyage des séquences).
+2.  Les lectures obtenues avec un séquençage RAD sont très courtes et obtenues à partir de sites de restriction. Cela permet de cibler les zones du génome analysées. Beaucoup de loci peuvent présenter des données manquantes notamment à cause d'un potentiel polymorphisme au niveau des sites de restriction, de la profondeur de couverture qui peut être assez variable entre les individus, qui peut entrainer la perte d'un allèle lors du tri des individus. En particulier, si le pourcentage de couverture est faible, certaines lectures seront peut-être être retirées lors du nettoyage des séquences, sous-estimant la diversité allélique à ces positions.
 
-3.  Filtre SNP avant analyse de génomique des populations
-Cela permet d'enlever les SNP liés à des erreurs de séquençage et de supprimer ceux pour lesquels on n'a pas assez de profondeur de couverture.
+3.  La filtration des SNPs permet d'enlever les SNPs liés à des erreurs de séquençage et de supprimer ceux pour lesquels nous n'avons pas assez de profondeur de couverture. C'est un compromis délicat entre qualité de la donnée et l'information portée.
 
-4.  Locus outlier
-Un locus outlier est un locus dont le FST est supérieur à celui des autres loci.
+4.  Un locus outlier est un locus dont le FST est supérieur à celui des autres loci. Cela peut signifier que ce site est soumis à une certaine forme de sélection.
 
-5.  Exemple d'organismes marins pour lesquels des scans génomiques permettent d'identifier des îlot de différenciation
-Un exemple possible est le bar, Disentrarchus labrax, lors de la comparaison entre la lignée Atlantique et la lignée méditerranéenne. Il est visible qu'une région du génome est sous sélection, les valeurs de FST sont élevées (pour une moyenne maximale autour de 0.70); Cela met en évidence un îlot de différenciation sur cette partie du génome entre les 2 populations.
+5.  Un exemple possible est le bar, Disentrarchus labrax. Lors de la comparaison entre la lignée Atlantique et la lignée méditerranéenne, il est visible qu'une région du génome est sous sélection : les valeurs de FST sont élevées (pour une moyenne maximale autour de 0.70). Cela met en évidence un îlot de différenciation sur cette partie du génome entre les 2 populations.
+
+```{r, echo = F}
+knitr::include_graphics("~/Bureau/finalexam/ex_bar.png")
+```
